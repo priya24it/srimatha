@@ -1,0 +1,135 @@
+import pandas as pd
+from google.cloud import bigquery
+import re
+
+def fetch_partition_date_from_filename(filename):
+    """
+    Extract the partition date from the filename.
+    
+    Args:
+        filename (str): The filename in the format abc_def_YYYYMMDDHHMMSS.json.
+        
+    Returns:
+        str: The partition date in 'YYYY-MM-DD' format.
+    """
+    match = re.search(r'(\d{8})\d{6}', filename)
+    if match:
+        return f"{match.group(1)[:4]}-{match.group(1)[4:6]}-{match.group(1)[6:]}"
+    else:
+        raise ValueError("Invalid filename format. Cannot extract partition date.")
+
+def load_local_json_to_dataframe(file_path):
+    """
+    Load JSON data from a local file into a Pandas DataFrame.
+    
+    Args:
+        file_path (str): Path to the JSON file.
+        
+    Returns:
+        pd.DataFrame: A DataFrame containing the JSON data.
+    """
+    try:
+        return pd.read_json(file_path)
+    except Exception as e:
+        print(f"Error loading local JSON file: {e}")
+        return None
+
+def fetch_bigquery_table_partition_data(project_id, dataset_id, table_id, partition_date):
+    """
+    Fetch partitioned data from a BigQuery table into a Pandas DataFrame.
+    
+    Args:
+        project_id (str): Google Cloud project ID.
+        dataset_id (str): BigQuery dataset ID.
+        table_id (str): BigQuery table ID.
+        partition_date (str): Partition date in 'YYYY-MM-DD' format.
+        
+    Returns:
+        pd.DataFrame: A DataFrame containing the table data for the given partition date.
+    """
+    client = None
+    try:
+        client = bigquery.Client()
+        table_ref = f"{project_id}.{dataset_id}.{table_id}"
+        query = f"""
+        SELECT * FROM `{table_ref}`
+        WHERE DATE(partition_column) = '{partition_date}'
+        """
+        query_job = client.query(query)
+        dataframe = query_job.to_dataframe()
+        return dataframe
+    except Exception as e:
+        print(f"Error fetching BigQuery data: {e}")
+        return None
+    finally:
+        if client:
+            client.close()
+            print("BigQuery client closed.")
+
+def compare_dataframes(df1, df2):
+    """
+    Compare two DataFrames for common columns, and count and compare data.
+    
+    Args:
+        df1 (pd.DataFrame): The first DataFrame.
+        df2 (pd.DataFrame): The second DataFrame.
+        
+    Returns:
+        dict: Comparison results including common columns, counts, and data differences.
+    """
+    common_columns = set(df1.columns).intersection(df2.columns)
+    results = {
+        "common_columns": list(common_columns),
+        "row_count_df1": len(df1),
+        "row_count_df2": len(df2),
+        "data_comparison": {}
+    }
+
+    for column in common_columns:
+        df1_values = df1[column].dropna().sort_values().reset_index(drop=True)
+        df2_values = df2[column].dropna().sort_values().reset_index(drop=True)
+        match = df1_values.equals(df2_values)
+        results["data_comparison"][column] = "Match" if match else "Mismatch"
+
+    return results
+
+if __name__ == "__main__":
+    # Local JSON file and BigQuery details
+    LOCAL_FILE_PATH = "abc_def_202310230000.json"
+    PROJECT_ID = "your-project-id"
+    DATASET_ID = "your-dataset-id"
+    TABLE_ID = "your-table-id"
+
+    # Step 1: Extract partition date from file name
+    partition_date = fetch_partition_date_from_filename(LOCAL_FILE_PATH)
+    print(f"Partition date extracted from filename: {partition_date}")
+
+    # Step 2: Load local JSON data into DataFrame
+    local_df = load_local_json_to_dataframe(LOCAL_FILE_PATH)
+    if local_df is None:
+        print("Failed to load local JSON file. Exiting.")
+        exit()
+
+    print("Local data loaded into DataFrame:")
+    print(local_df.head())
+
+    # Step 3: Fetch partitioned BigQuery table data
+    bigquery_df = fetch_bigquery_table_partition_data(PROJECT_ID, DATASET_ID, TABLE_ID, partition_date)
+    if bigquery_df is None:
+        print("Failed to fetch BigQuery data. Exiting.")
+        exit()
+
+    print("BigQuery data loaded into DataFrame:")
+    print(bigquery_df.head())
+
+    # Step 4: Compare the two DataFrames
+    comparison_results = compare_dataframes(local_df, bigquery_df)
+    
+    # Print comparison results
+    print("\nComparison Results:")
+    print(f"Common Columns: {comparison_results['common_columns']}")
+    print(f"Row Count in Local File: {comparison_results['row_count_df1']}")
+    print(f"Row Count in BigQuery Table: {comparison_results['row_count_df2']}")
+    print("Data Comparison by Column:")
+    for column, status in comparison_results["data_comparison"].items():
+        print(f"  Column: {column}, Status: {status}")
