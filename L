@@ -1,0 +1,15 @@
+import logging
+
+# Configure logging
+logging.basicConfig(
+    filename='logfile.log',  # Log file name
+    filemode='a',           # Append mode
+    format='%(asctime)s - %(levelname)s - %(message)s',  # Format for log messages
+    level=logging.INFO      # Set the minimum logging level
+)
+
+# Example log messages
+logging.info("This is an informational message.")
+logging.warning("This is a warning message.")
+logging.error("This is an error message.")
+logging.debug("This is a debug message.")  # Will not be logged because the level is INFO
