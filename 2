@@ -1,0 +1,43 @@
+import pandas as pd
+
+# Load the CSV file
+file_path = "your_file.csv"  # Replace with your file path
+df = pd.read_csv(file_path)
+
+# Group by the ID column
+id_column = 'id'  # Replace with your ID column name
+grouped = df.groupby(id_column)
+
+# Function to identify differing columns within a group
+def find_differences(group):
+    # Compare all rows in the group
+    differences = {}
+    for col in group.columns:
+        if col == id_column:
+            continue
+        # Check if all values in the column are the same
+        if len(group[col].unique()) > 1:
+            differences[col] = group[col].unique()
+    return differences
+
+# Apply the function to each group
+results = {}
+for id_value, group in grouped:
+    differences = find_differences(group)
+    if differences:  # Only keep IDs with differences
+        results[id_value] = differences
+
+# Print the results
+for id_value, diff_columns in results.items():
+    print(f"ID: {id_value}")
+    for col, values in diff_columns.items():
+        print(f"  Column '{col}' has differing values: {values}")
+
+
+output = []
+for id_value, diff_columns in results.items():
+    for col, values in diff_columns.items():
+        output.append({'ID': id_value, 'Column': col, 'Differing Values': list(values)})
+
+output_df = pd.DataFrame(output)
+output_df.to_csv("differences.csv", index=False)
