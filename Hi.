@@ -1,0 +1,50 @@
+from google.cloud import bigquery
+import csv
+
+def fetch_labels_and_save_to_csv(dataset_file, output_csv):
+    # Initialize BigQuery client
+    client = bigquery.Client()
+
+    # Read the list of datasets from the text file
+    with open(dataset_file, 'r') as file:
+        datasets = file.read().splitlines()
+
+    # Open the output CSV file
+    with open(output_csv, mode='w', newline='') as file:
+        writer = csv.writer(file)
+
+        # Write the CSV header
+        writer.writerow(["Dataset", "Table/View", "Has Labels", "Labels", "Is View"])
+
+        # Loop through each dataset
+        for dataset_name in datasets:
+            print(f"Processing dataset: {dataset_name}")
+            dataset_id = f"{client.project}.{dataset_name}"
+
+            try:
+                # Fetch tables and views in the dataset
+                tables = client.list_tables(dataset_id)
+
+                for table in tables:
+                    table_id = f"{dataset_id}.{table.table_id}"
+                    table_obj = client.get_table(table_id)
+
+                    # Fetch labels
+                    labels = table_obj.labels
+                    has_labels = bool(labels)
+                    labels_string = ", ".join([f"{k}:{v}" for k, v in labels.items()]) if has_labels else "None"
+
+                    # Check if it is a view
+                    is_view = table_obj.table_type == "VIEW"
+
+                    # Write the row to the CSV
+                    writer.writerow([dataset_name, table_id, has_labels, labels_string, is_view])
+            except Exception as e:
+                print(f"Error processing dataset {dataset_name}: {e}")
+                writer.writerow([dataset_name, "Error", "N/A", str(e), "N/A"])
+
+    print(f"Processing completed. Results saved to {output_csv}")
+
+# Replace 'datasets.txt' with the path to your text file containing the dataset names
+# Replace 'output.csv' with the desired output CSV file name
+fetch_labels_and_save_to_csv("datasets.txt", "output.csv")
