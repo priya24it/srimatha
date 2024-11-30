@@ -1,0 +1,44 @@
+from google.cloud import bigquery
+import pandas as pd
+
+def execute_queries_and_save_to_csv(queries_file, output_csv):
+    # Initialize BigQuery client
+    client = bigquery.Client()
+    
+    # Read queries from the text file
+    with open(queries_file, 'r') as file:
+        queries = file.readlines()
+    
+    # Prepare to store results
+    all_results = []
+
+    # Execute each query
+    for i, query in enumerate(queries):
+        query = query.strip()  # Remove any leading/trailing whitespace or newline characters
+        if not query:  # Skip empty lines
+            continue
+        print(f"Executing Query {i + 1}: {query}")
+        try:
+            # Execute the query
+            query_job = client.query(query)
+            results = query_job.result().to_dataframe()  # Convert results to pandas DataFrame
+            
+            # Append results to the list
+            results['query_number'] = i + 1  # Add query identifier for reference
+            all_results.append(results)
+        except Exception as e:
+            print(f"Error executing query {i + 1}: {e}")
+
+    # Combine all query results into a single DataFrame
+    if all_results:
+        combined_results = pd.concat(all_results, ignore_index=True)
+        # Save combined results to a CSV file
+        combined_results.to_csv(output_csv, index=False)
+        print(f"All query results have been saved to {output_csv}.")
+    else:
+        print("No results to save. Please check your queries.")
+
+# Example usage
+queries_file = 'queries.txt'  # Text file with queries
+output_csv = 'bigquery_results.csv'  # Output CSV file
+execute_queries_and_save_to_csv(queries_file, output_csv)
