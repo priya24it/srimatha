@@ -1,0 +1,50 @@
+import re
+import pandas as pd
+
+def extract_837I_data(input_file, output_file):
+    """
+    Processes an 837I file to extract data for each code (LX, SV, DTP) into a structured table format.
+
+    Args:
+        input_file (str): Path to the input 837I file.
+        output_file (str): Path to save the output in Excel format.
+    """
+    # Initialize storage for extracted data
+    extracted_data = []
+
+    # Read the 837I file
+    with open(input_file, "r") as file:
+        content = file.read()
+
+    # Split data into claims using the "CLM*" identifier
+    claims = re.split(r"CLM\*", content)
+
+    for claim in claims[1:]:  # Skip the first split as it’s before the first claim
+        # Extract Claim ID
+        claim_id_match = re.match(r"([^~]+)", claim)
+        claim_id = claim_id_match.group(1) if claim_id_match else "Unknown"
+
+        # Extract LX, SV, and DTP segments and their values
+        lx_segments = re.findall(r"(LX\*\d+)(.*?)~", claim)
+        sv_segments = re.findall(r"(SV\d\*[^\*]+)(.*?)~", claim)
+        dtp_segments = re.findall(r"(DTP\*[^\*]+)(.*?)~", claim)
+
+        # For each segment, store Claim ID and segment details
+        for lx in lx_segments:
+            extracted_data.append({"ClaimID": claim_id, "Segment": "LX", "Code": lx[0], "Value": lx[1].strip()})
+        for sv in sv_segments:
+            extracted_data.append({"ClaimID": claim_id, "Segment": "SV", "Code": sv[0], "Value": sv[1].strip()})
+        for dtp in dtp_segments:
+            extracted_data.append({"ClaimID": claim_id, "Segment": "DTP", "Code": dtp[0], "Value": dtp[1].strip()})
+
+    # Convert extracted data to a DataFrame
+    df = pd.DataFrame(extracted_data)
+
+    # Save the data to an Excel file
+    df.to_excel(output_file, index=False)
+    print(f"Data has been successfully extracted and saved to '{output_file}'.")
+
+# Example usage
+input_file_path = "input_837I.txt"  # Replace with the path to your 837I file
+output_file_path = "output_837I_codes.xlsx"
+extract_837I_data(input_file_path, output_file_path)
