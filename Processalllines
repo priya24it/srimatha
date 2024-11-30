@@ -1,0 +1,40 @@
+import pandas as pd
+
+def process_all_lines_split_by_asterisk(file_path):
+    """
+    Reads the data from the file, splits each line based on '*', and creates a table.
+
+    :param file_path: Path to the input text file.
+    :return: A pandas DataFrame representing the split data in a table format.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+
+        # Process each line and split by '*'
+        processed_data = []
+        for line in lines:
+            line = line.strip()  # Remove any extra spaces or newlines
+            if line:  # Only process non-empty lines
+                processed_data.append(line.split('*'))
+
+        # Determine the maximum number of columns for uniformity
+        max_columns = max(len(row) for row in processed_data)
+
+        # Pad rows with empty strings to ensure consistent column lengths
+        processed_data = [row + [''] * (max_columns - len(row)) for row in processed_data]
+
+        # Create a DataFrame from the processed data
+        df = pd.DataFrame(processed_data)
+
+        # Display the DataFrame
+        import ace_tools as tools; tools.display_dataframe_to_user(name="Split Data Table", dataframe=df)
+
+        return df
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Example usage
+file_path = 'data.txt'  # Replace with the path to your file
+df = process_all_lines_split_by_asterisk(file_path)
