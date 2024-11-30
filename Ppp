@@ -1,0 +1,59 @@
+import pandas as pd
+
+def process_data_to_table(file_path):
+    """
+    Reads the data from the file, extracts relevant fields, and creates a table.
+
+    :param file_path: Path to the input text file.
+    :return: A pandas DataFrame representing the data in a table format.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+
+        # Variables to store the current context and the parsed data
+        current_clm = None
+        data = []
+
+        # Process each line
+        for line in lines:
+            line = line.strip()
+            if line.startswith("CLM"):
+                current_clm = line.split("*")[1]
+            elif line.startswith("LX"):
+                current_lx = line.split("*")[1]
+            elif line.startswith("SV2"):
+                sv2_details = line.split("*")[2:]
+            elif line.startswith("DTP*472"):
+                dtp_date = line.split("*")[3]
+            elif line.startswith("REF"):
+                ref = line.split("*")[1:]
+            elif line.startswith("SVD"):
+                svd_details = line.split("*")[1:]
+            elif line.startswith("CAS"):
+                cas_details = line.split("*")[1:]
+            elif line.startswith("DTP*573"):
+                dtp_573_date = line.split("*")[3]
+                # Append all collected data as a single row
+                data.append([
+                    current_clm, current_lx, " ".join(sv2_details), dtp_date,
+                    " ".join(ref), " ".join(svd_details), " ".join(cas_details), dtp_573_date
+                ])
+
+        # Create a DataFrame from the parsed data
+        columns = [
+            "CLM", "LX", "SV2 (Details)", "DTP", "REF", "SVD", "CAS", "DTP 573"
+        ]
+        df = pd.DataFrame(data, columns=columns)
+
+        # Display the DataFrame
+        print(df)
+
+        return df
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Example usage
+file_path = 'data.txt'  # Replace with the path to your file
+df = process_data_to_table(file_path)
