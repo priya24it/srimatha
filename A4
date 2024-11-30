@@ -1,0 +1,23 @@
+import pandas as pd
+
+# Function to generate SQL-like queries dynamically and save to file
+def generate_queries_and_save_to_file(input_csv, output_file="queries.txt"):
+    # Read data from CSV file
+    df = pd.read_csv(input_csv)
+    
+    # Group by 'id' and collect column names
+    grouped = df.groupby('id')['colname'].apply(list).reset_index()
+    
+    with open(output_file, 'w') as file:
+        for _, row in grouped.iterrows():
+            id_value = row['id']
+            columns = row['colname']
+            query = f"SELECT id, f1, {', '.join(columns)} FROM t1 WHERE id = {id_value};"
+            file.write(query + '\n')
+    
+    print(f"All SQL queries have been saved to {output_file}.")
+
+# Example usage
+# Replace 'input.csv' with the path to your CSV file
+input_csv = 'input.csv'
+generate_queries_and_save_to_file(input_csv)
