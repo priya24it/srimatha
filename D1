@@ -1,0 +1,87 @@
+import pandas as pd
+import pyodbc
+from openpyxl import Workbook, load_workbook
+
+# Function to connect to SQL Server
+def connect_to_sql_server(server, database, username, password):
+    connection_string = (
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={server};"
+        f"DATABASE={database};"
+        f"UID={username};"
+        f"PWD={password};"
+    )
+    connection = pyodbc.connect(connection_string)
+    return connection
+
+# Function to get the list of tables starting with "I"
+def get_table_list(connection):
+    query = """
+        SELECT TABLE_NAME
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_NAME LIKE 'I%'
+    """
+    tables_df = pd.read_sql(query, connection)
+    return tables_df['TABLE_NAME'].tolist()
+
+# Function to get table data and update it into Excel
+def update_table_data_to_excel(connection, tables, output_excel):
+    # Create a new workbook or load an existing one
+    try:
+        workbook = load_workbook(output_excel)
+    except FileNotFoundError:
+        workbook = Workbook()
+    
+    for table in tables:
+        print(f"Fetching data from table: {table}")
+        
+        # Query to fetch table data
+        query = f"SELECT * FROM {table}"
+        table_data = pd.read_sql(query, connection)
+        
+        # Add a new sheet for each table
+        if table not in workbook.sheetnames:
+            workbook.create_sheet(title=table)
+        
+        sheet = workbook[table]
+        
+        # Write query and column names to the sheet
+        sheet.append([f"Query for {table}", f"SELECT * FROM {table}"])
+        sheet.append(table_data.columns.tolist())
+        
+        # Write data rows to the sheet
+        for row in table_data.itertuples(index=False):
+            sheet.append(list(row))
+    
+    # Save the workbook
+    workbook.save(output_excel)
+    print(f"Data from all tables has been updated into {output_excel}")
+
+# Main script
+def main():
+    # SQL Server credentials
+    server = 'your_server'
+    database = 'your_database'
+    username = 'your_username'
+    password = 'your_password'
+    output_excel = 'table_data_output.xlsx'
+    
+    try:
+        # Connect to the SQL Server
+        connection = connect_to_sql_server(server, database, username, password)
+        
+        # Get the list of tables starting with "I"
+        tables = get_table_list(connection)
+        
+        # Update data from each table into Excel
+        update_table_data_to_excel(connection, tables, output_excel)
+        
+        # Close the connection
+        connection.close()
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Run the script
+if __name__ == "__main__":
+    main()
