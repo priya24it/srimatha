@@ -1,0 +1,29 @@
+import pandas as pd
+
+def save_non_null_columns_to_excel(input_file, output_file):
+    """
+    Reads a DataFrame from a file, filters columns with no null values, 
+    and saves the result to an Excel file.
+    
+    :param input_file: Path to the input file (CSV or Excel)
+    :param output_file: Path to save the filtered Excel file
+    """
+    # Read the input file (auto-detect format based on extension)
+    if input_file.endswith('.csv'):
+        df = pd.read_csv(input_file)
+    elif input_file.endswith(('.xls', '.xlsx')):
+        df = pd.read_excel(input_file)
+    else:
+        raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
+    
+    # Filter columns with no null values
+    non_null_columns = df.loc[:, df.notnull().all()]
+    
+    # Save the filtered DataFrame to Excel
+    non_null_columns.to_excel(output_file, index=False)
+    print(f"Filtered columns with no null values have been saved to '{output_file}'.")
+
+# Example usage
+input_file = "data.xlsx"  # Replace with your input file path
+output_file = "filtered_non_null_columns.xlsx"
+save_non_null_columns_to_excel(input_file, output_file)
