@@ -1,0 +1,28 @@
+def extract_clm_lines(file_path):
+    """
+    Extracts and prints all the lines containing 'CLM' from a file.
+
+    :param file_path: Path to the input text file.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            # Read lines from the file
+            lines = file.readlines()
+        
+        # Extract lines containing 'CLM'
+        clm_lines = [line.strip() for line in lines if "CLM" in line]
+        
+        # Print extracted lines
+        print("Lines containing 'CLM':")
+        for line in clm_lines:
+            print(line)
+        
+        return clm_lines
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Example usage
+file_path = 'your_file_path.txt'  # Replace with the path to your file
+clm_lines = extract_clm_lines(file_path)
