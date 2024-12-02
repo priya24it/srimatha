@@ -1,0 +1,40 @@
+from google.cloud import storage
+from datetime import datetime
+import os
+
+# Variables
+BUCKET_NAME = "your-bucket-name"
+PARTITION_DATES = [f"202411{str(i).zfill(2)}" for i in range(1, 31 + 1)]  # Generate dates from 20241101 to 20241130
+LOCAL_DOWNLOAD_DIR = "./downloads"  # Local directory to save the files
+
+# Create the local download directory if it doesn't exist
+os.makedirs(LOCAL_DOWNLOAD_DIR, exist_ok=True)
+
+def download_partitioned_files(bucket_name, partition_dates, local_dir):
+    """
+    Downloads files from a GCS bucket that match specific partition dates.
+    """
+    # Initialize the Google Cloud Storage client
+    client = storage.Client()
+
+    # List all the blobs in the bucket
+    print(f"Fetching files from bucket: {bucket_name}")
+    blobs = client.list_blobs(bucket_name)
+
+    files_downloaded = 0
+
+    for blob in blobs:
+        # Check if the blob name contains any of the partition dates
+        if any(date in blob.name for date in partition_dates):
+            # Define the local file path
+            local_file_path = os.path.join(local_dir, os.path.basename(blob.name))
+            print(f"Downloading {blob.name} to {local_file_path}...")
+
+            # Download the file
+            blob.download_to_filename(local_file_path)
+            files_downloaded += 1
+
+    print(f"Download complete. {files_downloaded} file(s) downloaded.")
+
+# Call the function to download files
+download_partitioned_files(BUCKET_NAME, PARTITION_DATES, LOCAL_DOWNLOAD_DIR)
