@@ -1,0 +1,82 @@
+uimport pandas as pd
+import pyodbc
+from openpyxl import Workbook
+
+# Database connection details
+db_config = {
+    "server": "your_server",   # Replace with your SQL Server host
+    "database": "your_database", # Replace with your database name
+    "username": "your_username", # Replace with your username
+    "password": "your_password"  # Replace with your password
+}
+
+# Create a connection string
+connection_string = (
+    f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+    f"SERVER={db_config['server']};"
+    f"DATABASE={db_config['database']};"
+    f"UID={db_config['username']};"
+    f"PWD={db_config['password']}"
+)
+
+# Connect to the database
+connection = pyodbc.connect(connection_string)
+
+# Query to get table and column information from the information schema
+query = f"""
+SELECT TABLE_NAME, COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_CATALOG = '{db_config['database']}'
+ORDER BY TABLE_NAME, ORDINAL_POSITION;
+"""
+
+# Execute the query and load results into a DataFrame
+df = pd.read_sql(query, connection)
+
+# Get unique table names
+tables = df['TABLE_NAME'].unique()
+
+# Create an Excel workbook
+output_file = "output_data.xlsx"
+wb = Workbook()
+
+# Iterate through each table and execute the queries
+for table in tables:
+    # Get all column names for the table
+    columns = df[df['TABLE_NAME'] == table]['COLUMN_NAME']
+    column_list = ', '.join(columns)
+    
+    # Generate the SELECT query
+    sql_query = f"SELECT {column_list} FROM {table};"
+    
+    # Execute the query and fetch the data
+    table_data = pd.read_sql(sql_query, connection)
+    
+    # Add a new sheet to the workbook
+    sheet_name = table[:31]  # Excel sheet names have a 31-character limit
+    ws = wb.create_sheet(title=sheet_name)
+    
+    # Write the SQL query at the top of the sheet
+    ws.cell(row=1, column=1, value="SQL Query:")
+    ws.cell(row=1, column=2, value=sql_query)
+    
+    # Write the column headers
+    for col_idx, col_name in enumerate(table_data.columns, start=1):
+        ws.cell(row=3, column=col_idx, value=col_name)  # Start headers at row 3
+    
+    # Write the table data below the headers
+    for row_idx, row in enumerate(table_data.itertuples(index=False), start=4):
+        for col_idx, value in enumerate(row, start=1):
+            ws.cell(row=row_idx, column=col_idx, value=value)
+
+# Remove the default sheet created by openpyxl
+if "Sheet" in wb.sheetnames:
+    wb.remove(wb["Sheet"])
+
+# Save the workbook
+wb.save(output_file)
+
+# Close the database connection
+connection.close()
+
+print(f"Data from all tables has been written to {output_file}")
