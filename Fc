@@ -1,0 +1,43 @@
+import pandas as pd
+import pyodbc
+
+# Database connection details
+db_config = {
+    "server": "your_server",   # Replace with your SQL Server host
+    "database": "your_database", # Replace with your database name
+    "username": "your_username", # Replace with your username
+    "password": "your_password"  # Replace with your password
+}
+
+# Connection string
+connection_string = (
+    f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+    f"SERVER={db_config['server']};"
+    f"DATABASE={db_config['database']};"
+    f"UID={db_config['username']};"
+    f"PWD={db_config['password']}"
+)
+
+# Connect to the database
+connection = pyodbc.connect(connection_string)
+
+# Query to get column names
+query = f"""
+SELECT COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'your_table'  -- Replace with your table name
+ORDER BY ORDINAL_POSITION;
+"""
+
+# Fetch column names into a DataFrame
+columns_df = pd.read_sql(query, connection)
+
+# Format column names with square brackets
+formatted_columns = [f"[{col}]" for col in columns_df['COLUMN_NAME']]
+
+# Create the SELECT query
+sql_query = f"SELECT {', '.join(formatted_columns)} FROM your_table;"
+print(sql_query)
+
+# Close the database connection
+connection.close()
